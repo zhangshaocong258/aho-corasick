@@ -1,17 +1,32 @@
 Aho-Corasick
 ============
-
-Dependency
+Aho-Corasick的Java实现，针对Ascii优化，支持Unicode。
+关于
 ----------
-Include this dependency in your POM. Be sure to check for the latest version in Maven Central.
-```xml
-    <dependency>
-        <groupId>org.ahocorasick</groupId>
-        <artifactId>ahocorasick</artifactId>
-        <version>0.2.3</version>
-    </dependency>
-```
+fork自https://github.com/robert-bor/aho-corasick，作者是https://github.com/robert-bor。
+我针对Ascii做了优化，添加了中文注释。
 
+用法
+-----
+默认支持Unicode，调用方法如下
+```java
+    Trie trie = new Trie();
+    trie.addKeyword("hers");
+    trie.addKeyword("his");
+    trie.addKeyword("she");
+    trie.addKeyword("he");
+    Collection<Emit> emits = trie.parseText("ushers");
+```
+如果是在Ascii字符集上做模式匹配，可以使用如下方式构造优化版的Trie树
+```java
+    Trie trie = new Trie(true);
+    trie.addKeyword("hers");
+    trie.addKeyword("his");
+    trie.addKeyword("she");
+    trie.addKeyword("he");
+    Collection<Emit> emits = trie.parseText("ushers");
+```
+其他接口都有中文注释，不多说了。以下是原作者的介绍：
 Introduction
 ------------
 Nowadays most free-text searching is based on Lucene-like approaches, where the search text is parsed into its
