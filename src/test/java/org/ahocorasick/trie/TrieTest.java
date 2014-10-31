@@ -2,15 +2,19 @@ package org.ahocorasick.trie;
 
 import org.junit.Test;
 
-import java.util.Collection;
-import java.util.Iterator;
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.InputStreamReader;
+import java.util.*;
 
 import static junit.framework.Assert.assertEquals;
 
-public class TrieTest {
+public class TrieTest
+{
 
     @Test
-    public void keywordAndTextAreTheSame() {
+    public void keywordAndTextAreTheSame()
+    {
         Trie trie = new Trie();
         trie.addKeyword("abc");
         Collection<Emit> emits = trie.parseText("abc");
@@ -19,7 +23,8 @@ public class TrieTest {
     }
 
     @Test
-    public void textIsLongerThanKeyword() {
+    public void textIsLongerThanKeyword()
+    {
         Trie trie = new Trie();
         trie.addKeyword("abc");
         Collection<Emit> emits = trie.parseText(" abc");
@@ -28,7 +33,8 @@ public class TrieTest {
     }
 
     @Test
-    public void variousKeywordsOneMatch() {
+    public void variousKeywordsOneMatch()
+    {
         Trie trie = new Trie();
         trie.addKeyword("abc");
         trie.addKeyword("bcd");
@@ -39,7 +45,8 @@ public class TrieTest {
     }
 
     @Test
-    public void ushersTest() {
+    public void ushersTest()
+    {
         Trie trie = new Trie();
         trie.addKeyword("hers");
         trie.addKeyword("his");
@@ -54,7 +61,61 @@ public class TrieTest {
     }
 
     @Test
-    public void misleadingTest() {
+    public void pressureTest() throws Exception
+    {
+        BufferedReader br = new BufferedReader(new InputStreamReader(getClass().getResourceAsStream("/resource/dictionary.txt")));
+        String line;
+        Trie asciiTrie = new Trie(true);
+        Trie unicodeTrie = new Trie(false);
+        LinkedList<String> dictionary = new LinkedList<String>();
+        while ((line = br.readLine()) != null)
+        {
+            dictionary.add(line);
+        }
+        br.close();
+        long start = System.currentTimeMillis();
+        for (String word : dictionary)
+        {
+            asciiTrie.addKeyword(word);
+        }
+        System.out.printf("asciiTrie adding time:%dms%n", System.currentTimeMillis() - start);
+
+        start = System.currentTimeMillis();
+        for (String word : dictionary)
+        {
+            unicodeTrie.addKeyword(word);
+        }
+        System.out.printf("unicodeTrie adding time:%dms%n", System.currentTimeMillis() - start);
+
+        int pressure = 100000;
+        String text = "The quick brown fox jumps over the lazy dog";
+
+        start = System.currentTimeMillis();
+        System.out.println(asciiTrie.parseText(text));
+        System.out.printf("asciiTrie building time:%dms%n", System.currentTimeMillis() - start);
+
+        start = System.currentTimeMillis();
+        System.out.println(unicodeTrie.parseText(text));
+        System.out.printf("unicodeTrie building time:%dms%n", System.currentTimeMillis() - start);
+
+        start = System.currentTimeMillis();
+        for (int i = 0; i < pressure; ++i)
+        {
+            asciiTrie.parseText(text);
+        }
+        System.out.printf("asciiTrie used time:%dms%n", System.currentTimeMillis() - start);
+
+        start = System.currentTimeMillis();
+        for (int i = 0; i < pressure; ++i)
+        {
+            unicodeTrie.parseText(text);
+        }
+        System.out.printf("unicodeTrie used time:%dms%n", System.currentTimeMillis() - start);
+    }
+
+    @Test
+    public void misleadingTest()
+    {
         Trie trie = new Trie();
         trie.addKeyword("hers");
         Collection<Emit> emits = trie.parseText("h he her hers");
@@ -63,7 +124,8 @@ public class TrieTest {
     }
 
     @Test
-    public void recipes() {
+    public void recipes()
+    {
         Trie trie = new Trie();
         trie.addKeyword("veal");
         trie.addKeyword("cauliflower");
@@ -78,7 +140,8 @@ public class TrieTest {
     }
 
     @Test
-    public void longAndShortOverlappingMatch() {
+    public void longAndShortOverlappingMatch()
+    {
         Trie trie = new Trie();
         trie.addKeyword("he");
         trie.addKeyword("hehehehe");
@@ -94,7 +157,8 @@ public class TrieTest {
     }
 
     @Test
-    public void nonOverlapping() {
+    public void nonOverlapping()
+    {
         Trie trie = new Trie().removeOverlaps();
         trie.addKeyword("ab");
         trie.addKeyword("cba");
@@ -108,7 +172,8 @@ public class TrieTest {
     }
 
     @Test
-    public void startOfChurchillSpeech() {
+    public void startOfChurchillSpeech()
+    {
         Trie trie = new Trie().removeOverlaps();
         trie.addKeyword("T");
         trie.addKeyword("u");
@@ -125,7 +190,8 @@ public class TrieTest {
     }
 
     @Test
-    public void partialMatch() {
+    public void partialMatch()
+    {
         Trie trie = new Trie().onlyWholeWords();
         trie.addKeyword("sugar");
         Collection<Emit> emits = trie.parseText("sugarcane sugarcane sugar canesugar"); // left, middle, right test
@@ -134,7 +200,8 @@ public class TrieTest {
     }
 
     @Test
-    public void tokenizeFullSentence() {
+    public void tokenizeFullSentence()
+    {
         Trie trie = new Trie();
         trie.addKeyword("Alpha");
         trie.addKeyword("Beta");
@@ -152,7 +219,8 @@ public class TrieTest {
     }
 
     @Test
-    public void bug5InGithubReportedByXCurry() {
+    public void bug5InGithubReportedByXCurry()
+    {
         Trie trie = new Trie().caseInsensitive().onlyWholeWords();
         trie.addKeyword("turning");
         trie.addKeyword("once");
@@ -168,7 +236,8 @@ public class TrieTest {
     }
 
     @Test
-    public void caseInsensitive() {
+    public void caseInsensitive()
+    {
         Trie trie = new Trie().caseInsensitive();
         trie.addKeyword("turning");
         trie.addKeyword("once");
@@ -184,7 +253,8 @@ public class TrieTest {
     }
 
     @Test
-    public void tokenizeTokensInSequence() {
+    public void tokenizeTokensInSequence()
+    {
         Trie trie = new Trie();
         trie.addKeyword("Alpha");
         trie.addKeyword("Beta");
@@ -195,7 +265,8 @@ public class TrieTest {
 
     // Test offered by XCurry, https://github.com/robert-bor/aho-corasick/issues/7
     @Test
-    public void zeroLengthTestBug7InGithubReportedByXCurry() {
+    public void zeroLengthTestBug7InGithubReportedByXCurry()
+    {
         Trie trie = new Trie().removeOverlaps().onlyWholeWords().caseInsensitive();
         trie.addKeyword("");
         trie.tokenize("Try a natural lip and subtle bronzer to keep all the focus on those big bright eyes with NARS Eyeshadow Duo in Rated R And the winner is... Boots No7 Advanced Renewal Anti-ageing Glycolic Peel Kit ($25 amazon.com) won most-appealing peel.");
@@ -203,10 +274,11 @@ public class TrieTest {
 
     // Test offered by dwyerk, https://github.com/robert-bor/aho-corasick/issues/8
     @Test
-    public void unicodeIssueBug8ReportedByDwyerk() {
+    public void unicodeIssueBug8ReportedByDwyerk()
+    {
         String target = "LİKE THIS"; // The second character ('İ') is Unicode, which was read by AC as a 2-byte char
         Trie trie = new Trie().caseInsensitive().onlyWholeWords();
-        assertEquals("THIS", target.substring(5,9)); // Java does it the right way
+        assertEquals("THIS", target.substring(5, 9)); // Java does it the right way
         trie.addKeyword("this");
         Collection<Emit> emits = trie.parseText(target);
         assertEquals(1, emits.size());
@@ -214,9 +286,10 @@ public class TrieTest {
         checkEmit(it.next(), 5, 8, "this");
     }
 
-    private void checkEmit(Emit next, int expectedStart, int expectedEnd, String expectedKeyword) {
-        assertEquals("Start of emit should have been "+expectedStart, expectedStart, next.getStart());
-        assertEquals("End of emit should have been "+expectedEnd, expectedEnd, next.getEnd());
+    private void checkEmit(Emit next, int expectedStart, int expectedEnd, String expectedKeyword)
+    {
+        assertEquals("Start of emit should have been " + expectedStart, expectedStart, next.getStart());
+        assertEquals("End of emit should have been " + expectedEnd, expectedEnd, next.getEnd());
         assertEquals(expectedKeyword, next.getKeyword());
     }
 

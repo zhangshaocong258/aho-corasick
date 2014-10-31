@@ -10,162 +10,265 @@ import java.util.Queue;
 import java.util.concurrent.LinkedBlockingDeque;
 
 /**
+ * 基于 Aho-Corasick 白皮书, 贝尔实验室: ftp://163.13.200.222/assistant/bearhero/prog/%A8%E4%A5%A6/ac_bm.pdf
  *
- * Based on the Aho-Corasick white paper, Bell technologies: ftp://163.13.200.222/assistant/bearhero/prog/%A8%E4%A5%A6/ac_bm.pdf
  * @author Robert Bor
  */
-public class Trie {
+public class Trie
+{
 
     private TrieConfig trieConfig;
 
     private State rootState;
 
+    /**
+     * 是否建立了failure表
+     */
     private boolean failureStatesConstructed = false;
 
-    public Trie(TrieConfig trieConfig) {
-        this.trieConfig = trieConfig;
-        this.rootState = new State();
+    /**
+     * 构造一棵trie树
+     * @param trieConfig
+     */
+    public Trie(TrieConfig trieConfig)
+    {
+        this(trieConfig, true);
     }
 
-    public Trie() {
+    public Trie(TrieConfig trieConfig, boolean ascii)
+    {
+        this.trieConfig = trieConfig;
+        if (ascii)
+        {
+            this.rootState = new AsciiState();
+        }
+        else
+        {
+            this.rootState = new UnicodeState();
+        }
+    }
+
+    /**
+     * 以默认配置构造一棵trie树
+     */
+    public Trie()
+    {
         this(new TrieConfig());
     }
 
-    public Trie caseInsensitive() {
+    /**
+     * 构造一棵trie树
+     * @param ascii 是否是Ascii树（如果设为true，则会针对ascii加速，否则会支持Unicode）
+     */
+    public Trie(boolean ascii)
+    {
+        this(new TrieConfig(), ascii);
+    }
+
+    /**
+     * 大小写敏感
+     * @return
+     */
+    public Trie caseInsensitive()
+    {
         this.trieConfig.setCaseInsensitive(true);
         return this;
     }
 
-    public Trie removeOverlaps() {
+    /**
+     * 不允许模式串在位置上前后重叠
+     * @return
+     */
+    public Trie removeOverlaps()
+    {
         this.trieConfig.setAllowOverlaps(false);
         return this;
     }
 
-    public Trie onlyWholeWords() {
+    public Trie onlyWholeWords()
+    {
         this.trieConfig.setOnlyWholeWords(true);
         return this;
     }
 
-    public void addKeyword(String keyword) {
-        if (keyword == null || keyword.length() == 0) {
+    /**
+     * 添加一个模式串
+     * @param keyword
+     */
+    public void addKeyword(String keyword)
+    {
+        if (keyword == null || keyword.length() == 0)
+        {
             return;
         }
         State currentState = this.rootState;
-        for (Character character : keyword.toCharArray()) {
+        for (Character character : keyword.toCharArray())
+        {
             currentState = currentState.addState(character);
         }
         currentState.addEmit(keyword);
     }
 
-    public Collection<Token> tokenize(String text) {
+    /**
+     * 一个分词器
+     * @param text 待分词文本
+     * @return
+     */
+    public Collection<Token> tokenize(String text)
+    {
 
         Collection<Token> tokens = new ArrayList<Token>();
 
         Collection<Emit> collectedEmits = parseText(text);
         int lastCollectedPosition = -1;
-        for (Emit emit : collectedEmits) {
-            if (emit.getStart() - lastCollectedPosition > 1) {
+        for (Emit emit : collectedEmits)
+        {
+            if (emit.getStart() - lastCollectedPosition > 1)
+            {
                 tokens.add(createFragment(emit, text, lastCollectedPosition));
             }
             tokens.add(createMatch(emit, text));
             lastCollectedPosition = emit.getEnd();
         }
-        if (text.length() - lastCollectedPosition > 1) {
+        if (text.length() - lastCollectedPosition > 1)
+        {
             tokens.add(createFragment(null, text, lastCollectedPosition));
         }
 
         return tokens;
     }
 
-    private Token createFragment(Emit emit, String text, int lastCollectedPosition) {
-        return new FragmentToken(text.substring(lastCollectedPosition+1, emit == null ? text.length() : emit.getStart()));
+    private Token createFragment(Emit emit, String text, int lastCollectedPosition)
+    {
+        return new FragmentToken(text.substring(lastCollectedPosition + 1, emit == null ? text.length() : emit.getStart()));
     }
 
-    private Token createMatch(Emit emit, String text) {
-        return new MatchToken(text.substring(emit.getStart(), emit.getEnd()+1), emit);
+    private Token createMatch(Emit emit, String text)
+    {
+        return new MatchToken(text.substring(emit.getStart(), emit.getEnd() + 1), emit);
     }
 
+    /**
+     * 模式匹配
+     * @param text 待匹配的文本
+     * @return 匹配到的模式串
+     */
     @SuppressWarnings("unchecked")
-    public Collection<Emit> parseText(String text) {
+    public Collection<Emit> parseText(String text)
+    {
         checkForConstructedFailureStates();
 
         int position = 0;
         State currentState = this.rootState;
         List<Emit> collectedEmits = new ArrayList<Emit>();
-        for (Character character : text.toCharArray()) {
-            if (trieConfig.isCaseInsensitive()) {
+        for (Character character : text.toCharArray())
+        {
+            if (trieConfig.isCaseInsensitive())
+            {
                 character = Character.toLowerCase(character);
             }
             currentState = getState(currentState, character);
             storeEmits(position, currentState, collectedEmits);
-            position++;
+            ++position;
         }
 
-        if (trieConfig.isOnlyWholeWords()) {
+        if (trieConfig.isOnlyWholeWords())
+        {
             removePartialMatches(text, collectedEmits);
         }
 
-        if (!trieConfig.isAllowOverlaps()) {
-            IntervalTree intervalTree = new IntervalTree((List<Intervalable>)(List<?>)collectedEmits);
+        if (!trieConfig.isAllowOverlaps())
+        {
+            IntervalTree intervalTree = new IntervalTree((List<Intervalable>) (List<?>) collectedEmits);
             intervalTree.removeOverlaps((List<Intervalable>) (List<?>) collectedEmits);
         }
 
         return collectedEmits;
     }
 
-    private void removePartialMatches(String searchText, List<Emit> collectedEmits) {
+    /**
+     * 移除半截单词
+     * @param searchText
+     * @param collectedEmits
+     */
+    private void removePartialMatches(String searchText, List<Emit> collectedEmits)
+    {
         long size = searchText.length();
         List<Emit> removeEmits = new ArrayList<Emit>();
-        for (Emit emit : collectedEmits) {
+        for (Emit emit : collectedEmits)
+        {
             if ((emit.getStart() == 0 ||
-                 !Character.isAlphabetic(searchText.charAt(emit.getStart() - 1))) &&
-                (emit.getEnd() + 1 == size ||
-                 !Character.isAlphabetic(searchText.charAt(emit.getEnd() + 1)))) {
+                    !Character.isAlphabetic(searchText.charAt(emit.getStart() - 1))) &&
+                    (emit.getEnd() + 1 == size ||
+                            !Character.isAlphabetic(searchText.charAt(emit.getEnd() + 1))))
+            {
                 continue;
             }
             removeEmits.add(emit);
         }
 
-        for (Emit removeEmit : removeEmits) {
+        for (Emit removeEmit : removeEmits)
+        {
             collectedEmits.remove(removeEmit);
         }
     }
 
-    private State getState(State currentState, Character character) {
-        State newCurrentState = currentState.nextState(character);
-        while (newCurrentState == null) {
+    /**
+     * 跳转到下一个状态
+     * @param currentState 当前状态
+     * @param character 接受字符
+     * @return 跳转结果
+     */
+    private static State getState(State currentState, Character character)
+    {
+        State newCurrentState = currentState.nextState(character);  // 先按success跳转
+        while (newCurrentState == null) // 跳转失败的话，按failure跳转
+        {
             currentState = currentState.failure();
             newCurrentState = currentState.nextState(character);
         }
         return newCurrentState;
     }
 
-    private void checkForConstructedFailureStates() {
-        if (!this.failureStatesConstructed) {
+    /**
+     * 检查是否建立了failure表
+     */
+    private void checkForConstructedFailureStates()
+    {
+        if (!this.failureStatesConstructed)
+        {
             constructFailureStates();
         }
     }
 
-    private void constructFailureStates() {
+    /**
+     * 建立failure表
+     */
+    private void constructFailureStates()
+    {
         Queue<State> queue = new LinkedBlockingDeque<State>();
 
-        // First, set the fail state of all depth 1 states to the root state
-        for (State depthOneState : this.rootState.getStates()) {
+        // 第一步，将深度为1的节点的failure设为根节点
+        for (State depthOneState : this.rootState.getStates())
+        {
             depthOneState.setFailure(this.rootState);
             queue.add(depthOneState);
         }
         this.failureStatesConstructed = true;
 
-        // Second, determine the fail state for all depth > 1 state
-        while (!queue.isEmpty()) {
+        // 第二步，为深度 > 1 的节点建立failure表，这是一个bfs
+        while (!queue.isEmpty())
+        {
             State currentState = queue.remove();
 
-            for (Character transition : currentState.getTransitions()) {
+            for (Character transition : currentState.getTransitions())
+            {
                 State targetState = currentState.nextState(transition);
                 queue.add(targetState);
 
                 State traceFailureState = currentState.failure();
-                while (traceFailureState.nextState(transition) == null) {
+                while (traceFailureState.nextState(transition) == null)
+                {
                     traceFailureState = traceFailureState.failure();
                 }
                 State newFailureState = traceFailureState.nextState(transition);
@@ -175,11 +278,20 @@ public class Trie {
         }
     }
 
-    private void storeEmits(int position, State currentState, List<Emit> collectedEmits) {
+    /**
+     * 保存匹配结果
+     * @param position 当前位置，也就是匹配到的模式串的结束位置+1
+     * @param currentState 当前状态
+     * @param collectedEmits 保存位置
+     */
+    private static void storeEmits(int position, State currentState, List<Emit> collectedEmits)
+    {
         Collection<String> emits = currentState.emit();
-        if (emits != null && !emits.isEmpty()) {
-            for (String emit : emits) {
-                collectedEmits.add(new Emit(position-emit.length()+1, position, emit));
+        if (emits != null && !emits.isEmpty())
+        {
+            for (String emit : emits)
+            {
+                collectedEmits.add(new Emit(position - emit.length() + 1, position, emit));
             }
         }
     }

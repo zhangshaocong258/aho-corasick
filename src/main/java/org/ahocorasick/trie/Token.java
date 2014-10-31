@@ -1,14 +1,22 @@
 package org.ahocorasick.trie;
 
-public abstract class Token {
-
+/**
+ * 一个片段
+ */
+public abstract class Token
+{
+    /**
+     * 对应的片段
+     */
     private String fragment;
 
-    public Token(String fragment) {
+    public Token(String fragment)
+    {
         this.fragment = fragment;
     }
 
-    public String getFragment() {
+    public String getFragment()
+    {
         return this.fragment;
     }
 

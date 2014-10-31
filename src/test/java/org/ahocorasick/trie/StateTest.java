@@ -9,7 +9,7 @@ public class StateTest {
 
     @Test
     public void constructSequenceOfCharacters() {
-        State rootState = new State();
+        State rootState = new UnicodeState();
         rootState
             .addState('a')
             .addState('b')
