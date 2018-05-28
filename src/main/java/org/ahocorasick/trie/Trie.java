@@ -259,21 +259,22 @@ public class Trie
         // 第二步，为深度 > 1 的节点建立failure表，这是一个bfs
         while (!queue.isEmpty())
         {
-            State currentState = queue.remove();
+            State currentState = queue.remove();//s
 
             for (Character transition : currentState.getTransitions())
             {
-                State targetState = currentState.nextState(transition);
+                State targetState = currentState.nextState(transition);//h
                 queue.add(targetState);
 
-                State traceFailureState = currentState.failure();
-                while (traceFailureState.nextState(transition) == null)
+                State traceFailureState = currentState.failure();//s的fail节点是根节点
+                while (traceFailureState.nextState(transition) == null)//看看根节点有没有s的子节点h
                 {
-                    traceFailureState = traceFailureState.failure();
+                    traceFailureState = traceFailureState.failure();//没有的话向上继续，直到头结点
                 }
                 State newFailureState = traceFailureState.nextState(transition);
                 targetState.setFailure(newFailureState);
                 targetState.addEmit(newFailureState.emit());
+                System.out.println("fail_emits: " + newFailureState.emit().toString());
             }
         }
     }
